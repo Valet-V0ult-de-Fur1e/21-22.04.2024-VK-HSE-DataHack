@@ -6,6 +6,10 @@ import pymorphy3
 import spacy
 from keybert import KeyBERT
 
+main_categories = ['Общество', 'Экономика', 'Кино и телевидение', 'Люди',
+       'Наука и технологии', 'Транспорт', 'Погода', 'Рецепты', 'Мода', 'Дети',
+       'Дом', 'Питомцы', 'Здоровье']
+
 hide_decoration_bar_style = '''
     <style>
     header {visibility: hidden;}
@@ -83,11 +87,11 @@ def main():
         if len(str(txt).rstrip()) > 0:
             st.session_state['runned'] = txt
             main_tegs_list = ['MTag1', 'MTag2', 'MTag3', 'MTag4', 'MTag5']
-            title = st.selectbox('Основной тег', main_tegs_list, 0)
+            title = st.selectbox('Основной тег', main_categories, 0)
             options= st_tags(
                 label='Дополнительные теги',
                 text='Нажмите enter, чтобы добавить новый тег',
-                value=['Zero', 'One', 'Two']
+                value=clearText(txt)
                 )
             
             with open('result.json', 'w') as fp:
@@ -103,7 +107,6 @@ def main():
                     mime='text/json',
                     file_name='result.json',
                 )
-            st.write(clearText(txt))
         else:
             st.error("Ошибка валидации!!! Не заполнены обязательные поля!")
 
@@ -131,11 +134,12 @@ def clearText(text):
             except:
                 pass
             filtered_words.append(outword)
-    return st.session_state['KeyBERT'].extract_keywords(
+    out = st.session_state['KeyBERT'].extract_keywords(
         filtered_words,
         top_n=10,
         keyphrase_ngram_range=(1, 2),
-    )
+    )[:5]
+    return [item[0][:-1] for item in out ]
 
 
 
