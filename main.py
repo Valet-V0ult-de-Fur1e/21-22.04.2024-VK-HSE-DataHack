@@ -10,8 +10,7 @@ from datasets import Dataset
 
 def load_tokenizer_model():
     tokenizer = AutoTokenizer.from_pretrained("saved_model")
-    model = AutoModel.from_pretrained("saved_model")
-    print(model)
+    model = AutoModelForSequenceClassification.from_pretrained("saved_model")
     return tokenizer, model
 
 
@@ -23,7 +22,7 @@ def predict(text, tokenizer, model):
     data = Dataset.from_dict({"text": [text], "label": [None]})
     tokenized_data = data.map(lambda x: preprocess(tokenizer, x))
     trainer = Trainer(model)
-    return trainer.predict(tokenized_data).predictions
+    return int(trainer.predict(tokenized_data).predictions.argmax(axis=1)[0])
 
 
 hide_decoration_bar_style = '''
@@ -100,14 +99,19 @@ def main():
     button = st.button("Обработать")
 
     if button or 'runned' in st.session_state:
+        txt = title + description + txt
         if len(str(txt).rstrip()) > 0:
             st.session_state['runned'] = txt
-            main_tegs_list = ['MTag1', 'MTag2', 'MTag3', 'MTag4', 'MTag5']
-            title = st.selectbox('Основной тег', main_tegs_list, predict(txt, load_tokenizer_model()))
+            main_tegs_list = ['Общество', 'Экономика', 'Кино и телевидение', 'Люди',
+       'Наука и технологии', 'Транспорт', 'Погода', 'Рецепты', 'Мода', 'Дети',
+       'Дом', 'Питомцы', 'Здоровье']
+            result = predict(txt, st.session_state['t'], st.session_state['m'])
+            st.write(result)
+            title = st.selectbox('Основной тег', main_tegs_list, result)
             options= st_tags(
                 label='Дополнительные теги',
                 text='Нажмите enter, чтобы добавить новый тег',
-                value=['Zero', 'One', 'Two']
+                value=clearText(txt)
                 )
             
             with open('result.json', 'w') as fp:
@@ -123,20 +127,9 @@ def main():
                     mime='text/json',
                     file_name='result.json',
                 )
-            st.write(clearText(txt))
         else:
             st.error("Ошибка валидации!!! Не заполнены обязательные поля!")
 
-
-    # st.header("Enter the statement that you want to analyze")
-    # st.markdown("**Random Sentence:** A Few Good Men is a 1992 American legal drama film set in Boston directed by Rob Reiner and starring Tom Cruise, Jack Nicholson, and Demi Moore. The film revolves around the court-martial of two U.S. Marines charged with the murder of a fellow Marine and the tribulations of their lawyers as they prepare a case to defend their clients.")
-    
-    # text_input = st.text_area("Enter sentence")
-    
-    # ner = en_core_web_sm.load()
-    # doc = ner(str(text_input))
-    
-    # spacy_streamlit.visualize_ner(doc, labels=ner.get_pipe('ner').labels)
 
 def clearText(text):
     doc = st.session_state['nlp'](text)
@@ -151,11 +144,11 @@ def clearText(text):
             except:
                 pass
             filtered_words.append(outword)
-    return st.session_state['KeyBERT'].extract_keywords(
+    return [i[0] for i in st.session_state['KeyBERT'].extract_keywords(
         filtered_words,
         top_n=10,
         keyphrase_ngram_range=(1, 2),
-    )
+    )[:5]]
 
 
 
@@ -163,6 +156,9 @@ if __name__ == "__main__":
     if 'morph' in st.session_state:
         pass
     else:
+        t, m = load_tokenizer_model()
+        st.session_state['t'] = t
+        st.session_state['m'] = m
         st.session_state['nlp'] = spacy.load("ru_core_news_sm")
         st.session_state['morph'] = pymorphy3.MorphAnalyzer()
         st.session_state['KeyBERT'] = KeyBERT(model="cointegrated/rubert-tiny2")
