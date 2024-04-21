@@ -79,7 +79,6 @@ pymorphy3==2.0.1
 pymorphy3-dicts-ru==2.4.417150.4580142
 python-dateutil==2.9.0.post0
 pytz==2024.1
-pywin32==306
 PyYAML==6.0.1
 pyzmq==26.0.2
 referencing==0.34.0
