@@ -5,10 +5,26 @@ from stop_words import get_stop_words
 import pymorphy3
 import spacy
 from keybert import KeyBERT
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModel, Trainer
+from datasets import Dataset
 
-main_categories = ['Общество', 'Экономика', 'Кино и телевидение', 'Люди',
-       'Наука и технологии', 'Транспорт', 'Погода', 'Рецепты', 'Мода', 'Дети',
-       'Дом', 'Питомцы', 'Здоровье']
+def load_tokenizer_model():
+    tokenizer = AutoTokenizer.from_pretrained("saved_model")
+    model = AutoModel.from_pretrained("saved_model")
+    print(model)
+    return tokenizer, model
+
+
+def preprocess(tokenizer, text):
+    return tokenizer(text["text"], truncation=True, padding="max_length", max_length=128)
+
+
+def predict(text, tokenizer, model):
+    data = Dataset.from_dict({"text": [text], "label": [None]})
+    tokenized_data = data.map(lambda x: preprocess(tokenizer, x))
+    trainer = Trainer(model)
+    return trainer.predict(tokenized_data).predictions
+
 
 hide_decoration_bar_style = '''
     <style>
@@ -87,11 +103,11 @@ def main():
         if len(str(txt).rstrip()) > 0:
             st.session_state['runned'] = txt
             main_tegs_list = ['MTag1', 'MTag2', 'MTag3', 'MTag4', 'MTag5']
-            title = st.selectbox('Основной тег', main_categories, 0)
+            title = st.selectbox('Основной тег', main_tegs_list, predict(txt, load_tokenizer_model()))
             options= st_tags(
                 label='Дополнительные теги',
                 text='Нажмите enter, чтобы добавить новый тег',
-                value=clearText(txt)
+                value=['Zero', 'One', 'Two']
                 )
             
             with open('result.json', 'w') as fp:
@@ -107,6 +123,7 @@ def main():
                     mime='text/json',
                     file_name='result.json',
                 )
+            st.write(clearText(txt))
         else:
             st.error("Ошибка валидации!!! Не заполнены обязательные поля!")
 
@@ -134,12 +151,11 @@ def clearText(text):
             except:
                 pass
             filtered_words.append(outword)
-    out = st.session_state['KeyBERT'].extract_keywords(
+    return st.session_state['KeyBERT'].extract_keywords(
         filtered_words,
         top_n=10,
         keyphrase_ngram_range=(1, 2),
-    )[:5]
-    return [item[0][:-1] for item in out ]
+    )
 
 
 
